@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+
+{% block content %}
+<article id="note-content">
+  <header>
+    <h1 class="note-title">{{ title }}</h1>
+  </header>
+  {{- note_html | safe }}
+</article>
+
+{% endblock %}

@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+clap = "4.5.21"
 lol_html = "2.0"
 minijinja =  { version = "2.5", features = ["loader"] }
 pulldown-cmark = "0.12"

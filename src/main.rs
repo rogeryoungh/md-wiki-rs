@@ -1,142 +1,116 @@
-use lol_html::html_content::Element;
-use lol_html::{element, HtmlRewriter, Settings};
+pub mod markdown;
+
+use clap::{arg, Command};
+use markdown::{html_post_proces, render_md};
 use minijinja::{context, path_loader};
-use pulldown_cmark::{html, Options, Parser};
 use serde::{Deserialize, Serialize};
 use std::fs::{self};
 use std::path::{Path, PathBuf};
 
-fn render_md(md: &str, path: &Path) -> String {
-    let parser = Parser::new_ext(md, Options::all());
-
-    let mut html_output = String::new();
-    html::push_html(&mut html_output, parser);
-    // html_output
-    html_post_proces(&html_output, path)
-}
-
-fn html_post_proces(html: &str, md_path: &Path) -> String {
-    let mut output = Vec::new();
-    let mut rewriter = HtmlRewriter::new(
-        Settings {
-            element_content_handlers: vec![element!("a[href]", |el| {
-                resolve_links(el, md_path).unwrap();
-                Ok(())
-            })],
-            ..Settings::new()
-        },
-        |c: &[u8]| output.extend_from_slice(c),
-    );
-    rewriter.write(html.as_bytes()).unwrap();
-
-    String::from_utf8(output).unwrap()
-}
-
-fn split_query(input: &str) -> (&str, Option<&str>) {
-    if let Some(index) = input.find(['?', '#'].as_ref()) {
-        let (head, tail) = input.split_at(index);
-        (head, Some(tail))
-    } else {
-        (input, None)
-    }
-}
-
-fn resolve_links(el: &mut Element, md_path: &Path) -> Result<(), Box<dyn std::error::Error>> {
-    let url = el.get_attribute("href").expect("href was required");
-
-    if url.contains("://") || url.starts_with('/') {
-        el.set_attribute("target", "_blank").unwrap();
-        return Ok(());
-    }
-    let url = urlencoding::decode(&url).unwrap().into_owned();
-    let (path, query) = split_query(&url);
-    let path = path.strip_prefix("./").unwrap_or(path);
-    let new_path = md_path.parent().unwrap().join(path);
-    if !new_path.with_extension("md").exists() {
-        return Err(format!("File not found: {}", new_path.display()).into());
-    }
-    let mut new_path = String::new();
-    new_path.push_str(path.strip_suffix(".md").unwrap_or(path));
-    new_path.push_str(".html");
-    if let Some(query) = query {
-        new_path.push_str(query);
-    }
-
-    el.set_attribute("href", &new_path).unwrap();
-    Ok(())
-}
-
-fn dfs(path: &PathBuf, vault: &Vault) {
-    if path.is_dir() {
-        let paths = fs::read_dir(path).expect("Directory not exists");
-        for path in paths {
-            let path = path.unwrap().path();
-            dfs(&path, vault);
-        }
-    } else if path.extension().unwrap_or_default() == "md" {
-        println!("{}", path.display());
-        let contents = fs::read_to_string(path).expect("Unable to read file");
-
-        let html_output = render_md(&contents, path);
-
-        let mut env = minijinja::Environment::new();
-        env.set_loader(path_loader(&vault.templates));
-        let template = env.get_template("page.html").unwrap();
-        let html_output: String = template
-            .render(context! {
-                base_url => vault.base_url,
-                title => path.file_stem().unwrap().to_str().unwrap(),
-                note_html => html_output,
-            })
-            .unwrap();
-
-        let relative_path = path.strip_prefix(&vault.source).unwrap();
-        let output_path = vault.dist.join(relative_path).with_extension("html");
-
-        if let Some(parent) = output_path.parent() {
-            fs::create_dir_all(parent).expect("Unable to create directory");
-        }
-
-        fs::write(output_path, html_output).expect("Unable to write the file");
-    } else {
-        let relative_path = path.strip_prefix(&vault.source).unwrap();
-        let output_path = vault.dist.join(relative_path);
-        if let Some(parent) = output_path.parent() {
-            fs::create_dir_all(parent).expect("Unable to create directory");
-        }
-        fs::copy(path, output_path).expect("Unable to copy file");
-    }
-}
-
 #[derive(Deserialize, Serialize)]
-struct Vault {
+pub struct VaultConfig {
     pub source: PathBuf,
     pub dist: PathBuf,
     pub templates: PathBuf,
     pub base_url: String,
 }
 
+struct Site<'a> {
+    config: VaultConfig,
+    templates: minijinja::Environment<'a>,
+}
+
+impl Site<'_> {
+    fn new(base_url: Option<&String>) -> Self {
+        let config_file = fs::File::open("vault.json").expect("Unable to open the file");
+        let mut config: VaultConfig = serde_json::from_reader(config_file).unwrap();
+        if let Some(base_url) = base_url {
+            config.base_url = base_url.to_string();
+        }
+
+        let mut templates = minijinja::Environment::new();
+        templates.set_loader(path_loader(&config.templates));
+        Self { config, templates }
+    }
+
+    fn dfs(&self, path: &Path) {
+        if path.is_dir() {
+            let paths = fs::read_dir(path).expect("Directory not exists");
+            for path in paths {
+                let path = path.unwrap().path();
+                self.dfs(&path);
+            }
+        } else if path.extension().unwrap_or_default() == "md" {
+            println!("{}", path.display());
+            let contents = fs::read_to_string(path).expect("Unable to read file");
+
+            let html_output = render_md(&contents);
+            let html_output = html_post_proces(&html_output, path);
+
+            let template = self.templates.get_template("page.html").unwrap();
+            let html_output: String = template
+                .render(context! {
+                    base_url => self.config.base_url,
+                    title => path.file_stem().unwrap().to_str().unwrap(),
+                    note_html => html_output,
+                })
+                .unwrap();
+
+            let relative_path = path.strip_prefix(&self.config.source).unwrap();
+            let output_path = self.config.dist.join(relative_path).with_extension("html");
+            create_dir_if_not_exists(&output_path);
+
+            fs::write(output_path, html_output).expect("Unable to write the file");
+        } else {
+            let relative_path = path.strip_prefix(&self.config.source).unwrap();
+            let output_path = self.config.dist.join(relative_path);
+            create_dir_if_not_exists(&output_path);
+            fs::copy(path, output_path).expect("Unable to copy file");
+        }
+    }
+}
+
+fn create_dir_if_not_exists(path: &Path) {
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent).expect("Unable to create directory");
+    }
+}
+
+fn cli() -> Command {
+    Command::new("md-wiki-rs")
+        .about("A simple markdown generator")
+        .subcommand_required(true)
+        .arg_required_else_help(true)
+        .version(env!("CARGO_PKG_VERSION"))
+        .subcommand(
+            Command::new("build")
+                .about("Build the markdown files")
+                .arg(arg!(<path> "The directory of the markdown files"))
+                .arg(arg!(-b --"base-url" ["base-url"] "Override the base URL"))
+                .arg_required_else_help(true),
+        )
+}
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let args: Vec<String> = std::env::args().collect();
+    let matches = cli().get_matches();
 
-    if args.len() != 2 {
-        eprintln!("Usage: {} <dir>", args[0]);
-        std::process::exit(0);
+    match matches.subcommand() {
+        Some(("build", sub_matches)) => {
+            let path = sub_matches
+                .get_one::<String>("path")
+                .expect("required")
+                .to_string();
+            let base_url = sub_matches.get_one::<String>("base-url");
+            std::env::set_current_dir(&path)?;
+
+            let site = Site::new(base_url);
+            site.dfs(&site.config.source);
+        }
+        _ => {
+            eprintln!("Please provide a subcommand");
+            std::process::exit(0);
+        }
     }
-
-    let dir = PathBuf::from(&args[1]);
-    std::env::set_current_dir(&dir)?;
-
-    let vault: Vault = serde_json::from_str(&fs::read_to_string("vault.json")?)?;
-
-    // 创建 dist 文件夹
-    if vault.dist.exists() {
-        fs::remove_dir_all(&vault.dist)?;
-    }
-    fs::create_dir(&vault.dist)?;
-
-    // 遍历所有 Markdown 文件
-    dfs(&vault.source, &vault);
 
     Ok(())
 }

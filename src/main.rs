@@ -101,7 +101,6 @@ impl Site {
 }
 
 async fn server_render(Path(url): Path<String>, State(site): State<Arc<Site>>) -> Response {
-    println!("url {}", url);
     let url = {
         let base_url = site.config.base_url.trim_start_matches('/');
         let url = url.strip_prefix(base_url).unwrap_or(&url);
@@ -112,7 +111,6 @@ async fn server_render(Path(url): Path<String>, State(site): State<Arc<Site>>) -
     if path.is_dir() {
         path = path.join("index.html");
     }
-    println!("{}", path.display());
 
     if path.extension().unwrap_or_default() == "md" {
         let suf = url.strip_suffix(".md").unwrap();
@@ -125,7 +123,6 @@ async fn server_render(Path(url): Path<String>, State(site): State<Arc<Site>>) -
     }
 
     path.set_extension("md");
-    println!("{}", path.display());
     if path.exists() {
         let contents = fs::read_to_string(&path).expect("Unable to read file");
         let html_output = site.render_md(&contents, &path);

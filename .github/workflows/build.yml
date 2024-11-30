@@ -21,11 +21,11 @@ jobs:
       - name: Docs Test (Release)
         run: cargo run --release
 
-      # - name: Clippy
-      #   run: cargo clippy --all
+      - name: Clippy
+        run: cargo clippy --all
 
-      # - name: Format
-      #   run: cargo fmt --all -- --check
+      - name: Format
+        run: cargo fmt --all -- --check
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4

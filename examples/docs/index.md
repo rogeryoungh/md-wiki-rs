@@ -1,6 +1,6 @@
 # MD Wiki Docs
 
-一个自用的 Markdown 静态站生成器。
+一个高效、自用的 Markdown 静态站生成器。
 
 测试页面：
 

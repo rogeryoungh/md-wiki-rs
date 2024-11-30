@@ -1,6 +1,6 @@
 # MD Wiki
 
-A self use markdown static site generator.
+A fast self-used markdown static site generator.
 
 ## Refences
 

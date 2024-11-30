@@ -1,11 +1,9 @@
 {% extends "base.html" %}
 
 {% block content %}
-<article class="markdown-body" id="note-content">
-  <header>
-    <h1 class="note-title">{{ title }}</h1>
-  </header>
-  {{- note_html | safe }}
+<article class="py-20">
+  <div class="article mx-auto">
+    {{- note_html | safe }}
+  </div>
 </article>
-
 {% endblock %}

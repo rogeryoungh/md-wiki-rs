@@ -2,6 +2,7 @@ use lol_html::html_content::Element;
 use lol_html::{element, HtmlRewriter, Settings};
 use minijinja::{context, path_loader};
 use pulldown_cmark::{html, Options, Parser};
+use serde::{Deserialize, Serialize};
 use std::fs::{self};
 use std::path::{Path, PathBuf};
 
@@ -83,6 +84,7 @@ fn dfs(path: &PathBuf, vault: &Vault) {
         let template = env.get_template("page.html").unwrap();
         let html_output: String = template
             .render(context! {
+                base_url => vault.base_url,
                 title => path.file_stem().unwrap().to_str().unwrap(),
                 note_html => html_output,
             })
@@ -106,18 +108,26 @@ fn dfs(path: &PathBuf, vault: &Vault) {
     }
 }
 
+#[derive(Deserialize, Serialize)]
 struct Vault {
-    source: PathBuf,
-    dist: PathBuf,
-    templates: PathBuf,
+    pub source: PathBuf,
+    pub dist: PathBuf,
+    pub templates: PathBuf,
+    pub base_url: String,
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let vault = Vault {
-        source: PathBuf::from("./examples/docs"),
-        dist: PathBuf::from("./examples/dist"),
-        templates: PathBuf::from("./examples/templates"),
-    };
+    let args: Vec<String> = std::env::args().collect();
+
+    if args.len() != 2 {
+        eprintln!("Usage: {} <dir>", args[0]);
+        std::process::exit(0);
+    }
+
+    let dir = PathBuf::from(&args[1]);
+    std::env::set_current_dir(&dir)?;
+
+    let vault: Vault = serde_json::from_str(&fs::read_to_string("vault.json")?)?;
 
     // 创建 dist 文件夹
     if vault.dist.exists() {

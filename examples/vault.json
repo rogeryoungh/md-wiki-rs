@@ -1,0 +1,7 @@
+{
+	"source": "./docs",
+	"dist": "./dist",
+	"templates": "./templates",
+	"statics": "./templates/_static",
+	"base_url": "https://rogeryoungh.github.io/md-wiki-rs"
+}

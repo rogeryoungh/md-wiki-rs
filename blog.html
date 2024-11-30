@@ -1,0 +1,504 @@
+<!doctype html>
+<html lang="zh-cn">
+
+<head>
+	
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>blog | blog</title>
+<link rel="stylesheet" href="/_static/style.css">
+<!-- <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.8.0/github-markdown.min.css"
+	integrity="sha512-MN7ZIXx1ti80exC9cQBaKjC+lbTegJWs/u8KGPGIhJj0/Zyc4UtgWeOp4R8jpfrMUMYf6WJ5sAPbCbwe9S+t6g=="
+	crossorigin="anonymous" referrerpolicy="no-referrer" /> -->
+
+<link rel="preload" as="style" onload="this.onload=null;this.rel='stylesheet'"
+	href="https://cdnjs.cloudflare.com/ajax/libs/prism-themes/1.9.0/prism-a11y-dark.min.css">
+<noscript>
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism-themes/1.9.0/prism-coldark-dark.min.css">
+</noscript>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
+<script defer
+	src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+<script defer
+	src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css"
+	integrity="sha384-nB0miv6/jRmo5UMMR1wu3Gz6NLsoTkbqJghGIsx//Rlm+ZU03BU6SQNC66uf4l5+" crossorigin="anonymous">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"
+	integrity="sha384-7zkQWkzuo3B5mTepMUcHkMB5jZaolc2xDwL6VFqjFALcbeS9Ggm/Yr2r3Dy4lfFg"
+	crossorigin="anonymous"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"
+	integrity="sha384-43gviWU0YVjaDtb/GhzOouOXtZMP/7XUzwPTstBeZFe/+rCMvRwr4yROQP43s0Xk"
+	crossorigin="anonymous"></script>
+<script>
+	document.addEventListener("DOMContentLoaded", function () {
+		const inlineMathElements = document.querySelectorAll('span.math-inline');
+		const displayMathElements = document.querySelectorAll('span.math-display');
+
+		try {
+			inlineMathElements.forEach(el => {
+				katex.render(el.textContent.trim(), el, {
+					displayMode: false
+				});
+			});
+			displayMathElements.forEach(el => {
+				katex.render(el.textContent.trim(), el, {
+					displayMode: true
+				});
+			});
+		} catch (err) {
+			console.error('公式渲染错误:', err);
+		}
+	});
+</script>
+</head>
+
+<body class="flex flex-col font-serif dark:bg-base line-height-normal">
+	<header class="shadow print:hidden">
+	<nav class="max-w-6xl mx-auto">
+		<div class="flex items-center justify-between ">
+			<div class="pl-2 flex items-center space-x-4">
+				<img src="https://files.rogery.dev/me/icon-128.png" alt="Roger's avatar"
+					class="w-11 h-11 rounded-full border-solid border-2 border-stone-300 transition transition-duration-500 hover:transform-rotate-720" />
+				<a class="decoration-none color-base color-initial font-bold" href="/">Wiki</a>
+			</div>
+			<div class="sm:hidden">
+				<button class="p-4 text-6 justify-center hover:bg-stone-200 inline-flex items-center ">
+					<span class="i-ph-list">xx</span>
+				</button>
+			</div>
+			<nav class="hidden sm:block">
+				<ul>
+					<a class="p-4 font-medium inline-block hover:bg-stone-200 decoration-none color-initial" href="/">Home</a>
+					<a class="p-4 font-medium inline-block hover:bg-stone-200 decoration-none color-initial" href="/post">Articles</a>
+					<a class="p-4 font-medium inline-block hover:bg-stone-200 decoration-none color-initial" href="/about">About</a>
+				</ul>
+			</nav>
+		</div>
+	</nav>
+</header>
+	<main class="flex-1 px-4">
+<article class="py-20">
+  <div class="article mx-auto"><p>以下是我对 FFT 的感性理解，可能并不严谨，如有错误欢迎指正。</p>
+<h2>FFT</h2>
+<p>以下讲述的算法是 Cooley–Tukey FFT，它在算法竞赛中使用的更为广泛。</p>
+<p>前置知识：复数，需要理解 Euler 公式。</p>
+<h3>多项式乘法</h3>
+<p>对于 <span class="math math-inline">n</span> 次多项式</p>
+<p><span class="math math-display">
+\begin{aligned}
+f(x) = \sum_{i=0}^n f_ix^i &amp;=  f_0 + f_1 x + f_2x^2 + \cdots + g_nx^n \\
+g(x) = \sum_{i=0}^n g_ix^i &amp;=  g_0 + g_1 x + g_2x^2 + \cdots + g_nx^n
+\end{aligned}
+</span></p>
+<p>它们的卷积是 <span class="math math-inline">F(x) = f(x) \ast g(x) = (f \ast g)(x) = \sum\limits_{k=0}^{2n} c_kx^k</span>，其中</p>
+<p><span class="math math-display">
+c_k = \sum_{i+j=k}f_ig_j
+</span></p>
+<p>因此朴素的计算多项式的卷积需要 <span class="math math-inline">n^2</span> 次系数乘法，我们需要优化。</p>
+<h3>点值表示法</h3>
+<p><span class="math math-inline">n</span> 次多项式 <span class="math math-inline">f(x)</span> 可以由 <span class="math math-inline">n+1</span> 个系数决定，也可以由 <span class="math math-inline">n+1</span> 个座标（点值）决定。即 <span class="math math-inline">n</span> 次多项式可以看作 <span class="math math-inline">n+1</span> 维的向量。</p>
+<p>考虑选取 <span class="math math-inline">2n+1</span> 个座标来确定 <span class="math math-inline">f(x)</span> 和 <span class="math math-inline">g(x)</span>。则 <span class="math math-inline">F(x)</span> 可以简单的通过做 <span class="math math-inline">2n+1</span> 次乘法得到</p>
+<p><span class="math math-display">
+(x_k,F(x_k)) = \left(x_k, f(x_k)g(x_k)\right)
+</span></p>
+<p>现在我们有了新的思路：先从系数表示法转换为点值表示法，做完乘法后再变回去。</p>
+<h3>DFT</h3>
+<p>怎么把多项式转换成点值呢？我们有离散 Fourier 变换。</p>
+<p>称方程 <span class="math math-inline">x^n = 1</span> 的 <span class="math math-inline">n</span> 个解为单位根 <span class="math math-inline">\zeta_n</span>。对于给定的多项式 <span class="math math-inline">f(x) = \sum\limits_{k=0}^{n-1} f_kx^k</span> 和一个单位根 <span class="math math-inline">\zeta_n</span>，称向量</p>
+<p><span class="math math-display">
+\operatorname{DFT}_{\zeta_n}(f) =( f(1), f(\zeta_n^1), \cdots, f(\zeta_n^{n-1}) )
+</span></p>
+<p>为 <span class="math math-inline">f</span> 的离散 Fourier 变换（Discrete Fourier Transform）。</p>
+<p>DFT 存在逆变换（IDFT），即从点值重新变回系数，仍是从向量到向量的变换。</p>
+<p>IDFT 具有一个关键性质</p>
+<p><span class="math math-display">
+(\operatorname{DFT}_{\zeta})^{-1} = \frac{1}{n} (\operatorname{DFT}_{{\zeta}^{-1}}) \tag{1}
+</span></p>
+<p>我们将在后文证明它。现在我们可以统一的处理 DFT 和 IDFT。</p>
+<p>为了方便描述，接下来我们将把 <span class="math math-inline">\operatorname{DFT}_{\zeta_n}</span> 简单的记作 <span class="math math-inline">\mathcal{F}_n</span>。</p>
+<h3>单位原根</h3>
+<p>至此，我们计算 DFT 的复杂度仍然是 <span class="math math-inline">O(n^2)</span>，FFT 所迈出的关键一步是选取特殊的点加速计算。</p>
+<p>单位根中特殊的一个记作 <span class="math math-inline">\zeta_n = e^{\frac{2 \pi i}{n}}</span>，它叫做单位原根。依 Euler 公式，有</p>
+<p><span class="math math-display">
+\zeta_n = e^{\tfrac{2 \pi i}{n}} = \cos \left(\frac{2\pi}{n}\right) + i \sin \left(\frac{2\pi}{n}\right)
+</span></p>
+<p>即 <span class="math math-inline">\zeta_n</span> 是单位圆上的一个点，全部的 <span class="math math-inline">n</span> 个单位根</p>
+<p><span class="math math-display">
+x_k = \zeta_n^k = e^{k\tfrac{2 \pi i}{n}} = \cos \left(\frac{2\pi k}{n}\right) + i \sin \left(\frac{2\pi k}{n}\right) 
+</span></p>
+<p>恰对应到单位圆的 <span class="math math-inline">n</span> 等分点。因此根据 Euler 公式，<strong>单位根之间的乘法就是在单位圆上转圈圈。</strong></p>
+<p>不难通过 Euler 公式验证单位原根 <span class="math math-inline">\zeta_n</span> 的几条性质：</p>
+<ul>
+<li><span class="math math-inline">\zeta_{2n}^{2k} = \zeta_n^k</span>。</li>
+<li><span class="math math-inline">\zeta_{2n}^{n+k} = -\zeta_{2n}^k</span>。</li>
+</ul>
+<h3>分治</h3>
+<p>利用单位原根的特殊性，我们可以分治计算 DFT。比如对于 <span class="math math-inline">7</span> 次多项式</p>
+<p><span class="math math-display">
+\begin{aligned}
+f(x) &amp;= f_0 + f_1x + f_2x^2 + f_3 x^3 + f_4 x^4 + f_5 x^5 + f_6 x^6 + f_7 x^7 \\
+&amp;= (f_0 + f_2x^2 + f_4x^4 + f_6x^6) + x(f_1 + f_3x^2 + f_5x^4 + f_7x^6)
+\end{aligned}
+</span></p>
+<p>奇偶分类</p>
+<p><span class="math math-display">
+\begin{aligned}
+f^{[0]}(x) &amp;= f_0 + f_2x + f_4x^2 + f_6x^3 \\
+f^{[1]}(x) &amp;= f_1 + f_3x + f_5x^2 + f_7x^3
+\end{aligned}
+</span></p>
+<p>则原来的函数可以表示为</p>
+<p><span class="math math-display">
+f(x) = f^{[0]}(x^2) + xf^{[1]}(x^2)
+</span></p>
+<p>一般的，对于度小于 <span class="math math-inline">n</span> 的多项式 <span class="math math-inline">f(x)</span>，在单位根 <span class="math math-inline">x = \zeta_n^k</span> 处的点值是</p>
+<p><span class="math math-display">
+\begin{aligned}
+f(\zeta_n^k) &amp;= f^{[0]}(\zeta_n^k \cdot \zeta_n^k) + \zeta_n^kf^{[1]}(\zeta_n^k \cdot \zeta_n^k) \\
+&amp;= f^{[0]}(\zeta_n^{2k}) + \zeta_n^kf^{[1]}(\zeta_n^{2k}) \\
+&amp;= f^{[0]}(\zeta_{n/2}^{k}) + \zeta_n^kf^{[1]}(\zeta_{n/2}^{k})
+\end{aligned}
+</span></p>
+<p>同理可得</p>
+<p><span class="math math-display">
+\begin{aligned}
+f(\zeta_n^{k+n/2}) &amp;= f^{[0]}(\zeta_n^{2k+n}) + \zeta_n^{k+n/2}f^{[1]}(\zeta_n^{2k+n}) \\
+&amp;= f^{[0]}(\zeta_{n/2}^{k}) - \zeta_n^{k}f^{[1]}(\zeta_{n/2}^{k})
+\end{aligned}
+</span></p>
+<p>在 DFT 中使用有</p>
+<p><span class="math math-display">
+\begin{aligned}
+\mathcal{F}_n(f)[j] &amp;= \mathcal{F}_{n/2}(f^{[0]})[j] + \zeta_n^j \mathcal{F}_{n/2}(f^{[1]})[j] \\
+\mathcal{F}_n(f)[j + n/2] &amp;= \mathcal{F}_{n/2}(f^{[0]})[j] - \zeta_n^j\mathcal{F}_{n/2}(f^{[1]})[j]
+\end{aligned}
+\tag{2}
+</span></p>
+<p>因此我们需要把多项式的系数个数向上补到 <span class="math math-inline">2^n</span>，方便分治。</p>
+<p>至此，我们可以写出递归版的 FFT。</p>
+<pre><code class="language-cpp">void fft(int n, img *f, int op) {
+    static img tmp[1 &lt;&lt; 18];
+    if (n == 1)
+        return;
+    for (int i = 0; i &lt; n; i++)
+        tmp[i] = f[i];
+    for (int i = 0; i &lt; n; i++) {  // 偶数放左边，奇数放右边
+        if (i &amp; 1)
+            f[n / 2 + i / 2] = tmp[i];
+        else
+            f[i / 2] = tmp[i];
+    }
+    img *g = f, *h = f + n / 2;
+    fft(n / 2, g, op), fft(n / 2, h, op);
+    img w0 = {cos(2 * PI / n), sin(2 * PI * op / n)}, w = {1, 0};
+    for (int k = 0; k &lt; n / 2; k++) {
+        tmp[k] = g[k] + w * h[k];
+        tmp[k + n / 2] = g[k] - w * h[k];
+        w = w * w0;
+    }
+    for (int i = 0; i &lt; n; i++)
+        f[i] = tmp[i];
+}
+</code></pre>
+<h3>蝴蝶变换</h3>
+<p>递归分治总是不尽人意的，我们在前几行只是做了递归分组的事情，可以考虑一步到位。</p>
+<p>还是以 <span class="math math-inline">7</span> 次多项式为例</p>
+<ul>
+<li>初始 <span class="math math-inline">\{x^0,x^1,x^2,x^3,x^4,x^5,x^6,x^7\}</span></li>
+<li>一次 <span class="math math-inline">\{x^0,x^2,x^4,x^6\},\{x^1,x^3,x^5,x^7\}</span></li>
+<li>两次 <span class="math math-inline">\{x^0,x^4\},\{x^2,x^6\},\{x^1,x^5\},\{x^3,x^7\}</span></li>
+<li>结束 <span class="math math-inline">\{x^0\},\{x^4\},\{x^2\},\{x^6\},\{x^1\},\{x^5\},\{x^3\},\{x^7\}</span></li>
+</ul>
+<p>写出二进制的形式，可以发现：结束和开始的二进制恰好是相反的。</p>
+<table><thead><tr><th style="text-align: center">初始</th><th style="text-align: center">0</th><th style="text-align: center">1</th><th style="text-align: center">2</th><th style="text-align: center">3</th><th style="text-align: center">4</th><th style="text-align: center">5</th><th style="text-align: center">6</th><th style="text-align: center">7</th></tr></thead><tbody>
+<tr><td style="text-align: center">初始(2)</td><td style="text-align: center">000</td><td style="text-align: center">001</td><td style="text-align: center">010</td><td style="text-align: center">011</td><td style="text-align: center">100</td><td style="text-align: center">101</td><td style="text-align: center">110</td><td style="text-align: center">111</td></tr>
+<tr><td style="text-align: center">结束(2)</td><td style="text-align: center">000</td><td style="text-align: center">100</td><td style="text-align: center">010</td><td style="text-align: center">110</td><td style="text-align: center">001</td><td style="text-align: center">101</td><td style="text-align: center">011</td><td style="text-align: center">111</td></tr>
+<tr><td style="text-align: center">结束</td><td style="text-align: center">0</td><td style="text-align: center">4</td><td style="text-align: center">2</td><td style="text-align: center">6</td><td style="text-align: center">1</td><td style="text-align: center">5</td><td style="text-align: center">3</td><td style="text-align: center">7</td></tr>
+</tbody></table>
+<p>这个变换称为蝴蝶变换，也称位逆序置换（bit-reversal permutation）。</p>
+<p>我们可以 <span class="math math-inline">O(n)</span> 的预处理出变换数组。设 <code>R(x)</code> 是 <span class="math math-inline">x</span> 的变换结果，则 <code>R(x &gt;&gt; 1)</code> 此时是已知的。即是把 <code>R(x &gt;&gt; 1)</code> 右移一位再补上最高位即可。代码如下</p>
+<pre><code class="language-cpp">void pre_rev(int lim) {
+    int k = std::__lg(lim);
+    rev.resize(lim);
+    for (int i = 0; i &lt; lim; ++i) {
+        rev[i] = rev[i &gt;&gt; 1] &gt;&gt; 1;
+        if (i &amp; 1)
+            rev[i] |= lim &gt;&gt; 1;
+        // 或者合并写为
+        // rev[i] = (rev[i &gt;&gt; 1] &gt;&gt; 1) | ((i &amp; 1) &lt;&lt; (k - 1));
+    }
+}
+</code></pre>
+<p>现在我们可以写出非递归版的 FFT。</p>
+<pre><code class="language-cpp">void fft(img *f, int n, int op) { // DIT
+    for (int i = 0; i &lt; n; ++i)
+        if (i &lt; rev[i])
+            swap(f[i], f[rev[i]]);
+    for (int l = 1; l &lt;= n / 2; l &lt;&lt;= 1) {
+        img w0 = {cos(PI / l), sin(PI * op / l)};
+        for (int i = 0; i &lt; n; i += l * 2) {
+            img w = {1, 0};
+            for (int j = 0; j &lt; l; j++) {
+                img x = f[i + j], y = w * f[i + j + l];
+                f[i + j] = x + y, f[i + j + l] = x - y;
+                w = w * w0;
+            }
+        }
+    }
+    if (op == -1)
+        for (int i = 0; i &lt; n; i++)
+            f[i] = f[i] / n;
+}
+</code></pre>
+<h2>NTT</h2>
+<p>前置知识：数论基础（整除，同余）。</p>
+<p>用 <code>double</code> 去实现整数的乘法是很不优美的，精度、速度都很成问题。实际上，我们可以仅在整数下进行运算。</p>
+<h3>原根</h3>
+<p>我们本质上用到的单位原根 <span class="math math-inline">\zeta_n</span> 的两个性质是：</p>
+<ul>
+<li><span class="math math-inline">\zeta_{n}^{n} = 1</span>。</li>
+<li><span class="math math-inline">\zeta_{2n}^{n} = -1</span>。</li>
+</ul>
+<p>可以联想到模 <span class="math math-inline">p</span> 剩余类域 <span class="math math-inline">\mathbb{Z}_p</span>：其中的元素是 <span class="math math-inline">\{0,1,\cdots,p-1\}</span>，其上的运算都是模 <span class="math math-inline">p</span> 的。由于 Fermat 小定理</p>
+<p><span class="math math-display">
+a^{\varphi(p)} = a^{p-1} \equiv 1
+</span></p>
+<p>即从另一个角度说，<span class="math math-inline">p-1</span> 个正整数都是同余方程 <span class="math math-inline">x^{p-1} \equiv 1</span> 的解。</p>
+<p>它和单位根有很相似的形式，直觉上 <span class="math math-inline">\mathbb{Z}_p</span> 也存在类似单位原根的特殊数字。下面我们在 <span class="math math-inline">\mathbb{Z}_p</span> 上讨论，尝试证明这个数字存在。</p>
+<p>定义正整数 <span class="math math-inline">a \in \mathbb{Z}_p</span> 的阶 <span class="math math-inline">\delta_p(a)</span> 为最小的 <span class="math math-inline">r</span> 使得 <span class="math math-inline">a^r \equiv 1</span>。由 Fermat 小定理 <span class="math math-inline">a^{\varphi(p)} \equiv 1</span>，因此 <span class="math math-inline">a</span> 的阶一定存在且有 <span class="math math-inline">\delta_p(a) \mid \varphi(p)</span>。可以证明</p>
+<p><span class="math math-display">
+a,a^2,\cdots a^{\delta_p(a)} \tag{3}
+</span></p>
+<p>在模 <span class="math math-inline">p</span> 下余数互不相同。由 Lagrange 定理，<span class="math math-inline">x^{\delta_p(a)} \equiv 1</span> 的解至多有 <span class="math math-inline">\delta_p(a)</span> 个，恰是 <span class="math math-inline">(3)</span> 中所展示的。</p>
+<p>通过整除的性质，可以想到只有 <span class="math math-inline">i \bot \delta_p(a)</span> 才有 <span class="math math-inline">\delta_p(a^i) = \delta_p(a)</span>，即 <span class="math math-inline">a</span> 总是附带着</p>
+<p><span class="math math-display">
+\sum_{i=1}^{\delta_p(a)} [\gcd(i, \delta_p(a)) = 1] = \varphi(\delta_p(a))
+</span></p>
+<p>个阶相同的东西。因此阶为 <span class="math math-inline">\delta_p(a)</span> 的数恰有 <span class="math math-inline">\varphi(\delta_p(a))</span> 个。</p>
+<p>因为每个正整数都有唯一确定的阶，不妨假设对于所有 <span class="math math-inline">d \mid \varphi(p)</span>，阶 <span class="math math-inline">d</span> 都存在 <span class="math math-inline">\varphi(d)</span> 个对应的整数，统计整数个数</p>
+<p><span class="math math-display">
+\sum_{d \mid \varphi(p)} \varphi(d) = \varphi(p) = p - 1
+</span></p>
+<p>恰为 <span class="math math-inline">\mathbb{Z}_p</span> 全部正整数的个数，因此假设成立，也就存在 <span class="math math-inline">a</span> 使得 <span class="math math-inline">\delta_p(a) = p-1</span>。</p>
+<p>我们称这个 <span class="math math-inline">a</span> 是模 <span class="math math-inline">p</span> 下的一个原根，常用字母 <span class="math math-inline">g</span> 表示。</p>
+<h3>快速数论变换</h3>
+<p>尽可能提取 <span class="math math-inline">p - 1</span> 的因子 <span class="math math-inline">2</span> 有</p>
+<p><span class="math math-display">
+p = N q + 1, N = 2^m
+</span></p>
+<p>设 <span class="math math-inline">\mathbb{Z}_p</span> 的一个原根 <span class="math math-inline">g</span>，将 <span class="math math-inline">g_N \equiv g^q</span> 看作 <span class="math math-inline">\zeta_n</span> 的等价。利用二次剩余的知识不难得到 <span class="math math-inline">g_N^N \equiv 1</span> 和 <span class="math math-inline">g_N^{N/2} \equiv -1</span>。</p>
+<p>常见的有</p>
+<p><span class="math math-display">
+\begin{aligned}
+p = 1004535809 = 479 \times 2^{21} + 1&amp;, g = 3 \\
+p = 998244353 = 7 \times 17 \times 2^{23} + 1&amp;, g = 3
+\end{aligned}
+</span></p>
+<p>类似的，我们可以写出程序</p>
+<pre><code class="language-cpp">void ntt(ll *f, int n, int type) {
+    for (int i = 0; i &lt; n; ++i)
+        if (i &lt; rev[i])
+            swap(f[i], f[rev[i]]);
+    for (int h = 2; h &lt; n; h &lt;&lt;= 1) {
+        ll tg = type == 1 ? 3 : g_inv;
+        ll gn = qpow(tg, (P - 1) / h);
+        for (int j = 0; j &lt; n; j += h) {
+            ll g = 1;
+            for (int k = j; k &lt; j + h / 2; k++) {
+                ll f1 = f[k], f2 = g * f[k + h / 2] % P;
+                f[k] = (f1 + f2) % P;
+                f[k + h / 2] = (f1 - f2 + P) % P;
+                g = g * gn % P;
+            }
+        }
+    }
+    ll iv_n = qpow(n);
+    if (type == -1)
+        for (int i = 0; i &lt; n; i++)
+            f[i] = f[i] * iv_n % P;
+}
+</code></pre>
+<p>至此，你已经学会 FFT 了。下面我们将更深入的从数学角度研究 FFT，补足理论基础。</p>
+<h2>线性变换</h2>
+<p>DFT 是一个线性变换。换句话说，它可以被写成矩阵乘法的形式</p>
+<p><span class="math math-display">
+\begin{bmatrix}
+    f(\zeta_n^0) \\ f(\zeta_n^1) \\ f(\zeta_n^2) \\ \vdots \\ f(\zeta_n^{n-1})
+\end{bmatrix} = \begin{bmatrix}
+    1 &amp; 1 &amp; 1 &amp; \cdots &amp; 1 \\
+    1 &amp; \zeta_n^1 &amp; \zeta_n^2 &amp; \cdots &amp; \zeta_n^{n-1} \\
+    1 &amp; \zeta_n^2 &amp; \zeta_n^4 &amp; \cdots &amp; \zeta_n^{2(n-1)} \\
+    \vdots &amp; \vdots &amp; \vdots  &amp; \ddots &amp; \vdots \\
+    1 &amp; \zeta_n^{n-1} &amp; \zeta_n^{2(n-1)} &amp; \cdots &amp; \zeta_n^{(n-1)^2}
+\end{bmatrix}
+\begin{bmatrix}
+    f_0 \\ f_1 \\ f_2 \\ \vdots \\ f_{n-1}
+\end{bmatrix} 
+</span></p>
+<p>我们把中间的那个 <span class="math math-inline">n</span> 阶的 Vandermonde 方阵记为 <span class="math math-inline">V(\zeta_n) = (\zeta_n^{ij})</span>。</p>
+<p>直接计算 <span class="math math-inline">V(\zeta_n)</span> 的逆很不好算，但是验证下式是对角矩阵还是容易的</p>
+<p><span class="math math-display">
+V(\zeta_n) V(\zeta_n^{-1}) = (n[i = j]) = n I_n
+</span></p>
+<p>即 IDFT 所对应的矩阵为 <span class="math math-inline">V^{-1}(\zeta_n) = \frac{1}{n} V(\zeta_n^{-1})</span>，我们便证明了 <span class="math math-inline">(1)</span> 式。</p>
+<h3>干掉 REV</h3>
+<p>其实上文所实现的 FFT 和 IFFT 并不对偶，只是卷积定理使得 IFFT 恰是 FFT 的逆运算。具体的说，我们实现了两个 DIT，因此需要在计算之前进行蝴蝶变换。</p>
+<p><img src="https://upload.wikimedia.org/wikipedia/commons/f/f2/DIF_DIT.jpg" alt="Wikipedia" /></p>
+<p>我们运算的核心内容在于 <span class="math math-inline">(2)</span> 式，它可以被写做矩阵形式。</p>
+<p><span class="math math-display">
+\begin{bmatrix}
+O_1 \\ O_2
+\end{bmatrix} = 
+\begin{bmatrix}
+1 &amp; \zeta_n^{-j} \\
+1 &amp; -\zeta_n^{-j} 
+\end{bmatrix} 
+\begin{bmatrix}
+I_1 \\ I_2
+\end{bmatrix}
+</span></p>
+<p>对矩阵求逆</p>
+<p><span class="math math-display">
+\begin{bmatrix}
+I_1 \\ I_2
+\end{bmatrix} = \frac{1}{2} 
+\begin{bmatrix}
+1 &amp; 1 \\
+\zeta_n^{j} &amp; -\zeta_n^{j} 
+\end{bmatrix} 
+\begin{bmatrix}
+O_1 \\ O_2
+\end{bmatrix} \tag{4}
+</span></p>
+<p>我们便得到了 DIF。类似的，我们可以实现两个 DIF 作为 FFT，此时蝴蝶变换在计算之后。</p>
+<pre><code class="language-cpp">void fft(img *f, int n, int op) { // DIF
+    for (int l = n / 2; l &gt;= 1; l &gt;&gt;= 1) {
+        img w0 = {cos(PI / l), sin(PI * op / l)};
+        for (int i = 0; i &lt; n; i += l * 2) {
+            img w = {1, 0};
+            for (int j = 0; j &lt; l; j++) {
+                img x = f[i + j], y = f[i + j + l];
+                f[i + j] = x + y, f[i + j + l] = w * (x - y);
+                w = w * w0;
+            }
+        }
+    }
+    for (int i = 0; i &lt; n; ++i)
+        if (i &lt; rev[i])
+            swap(f[i], f[rev[i]]);
+    if (op == -1)
+        for (int i = 0; i &lt; n; i++)
+            f[i] = f[i] / n;
+}
+</code></pre>
+<p>容易发现，若我们以 DIF 作为 FFT，DIT 作为 IFFT，是不需要蝴蝶变换的。</p>
+<pre><code class="language-cpp">void fft(img *f, int n) {
+    for (int l = n / 2; l &gt;= 1; l &gt;&gt;= 1) {
+        img w0 = {cos(PI / l), sin(PI / l)};
+        for (int i = 0; i &lt; n; i += l * 2) {
+            img w = {1, 0};
+            for (int j = 0; j &lt; l; j++) {
+                img x = f[i + j], y = f[i + j + l];
+                f[i + j] = x + y, f[i + j + l] = w * (x - y);
+                w = w * w0;
+            }
+        }
+    }
+}
+
+void ifft(img *f, int n) {
+    for (int l = 1; l &lt;= n / 2; l &lt;&lt;= 1) {
+        img w0 = img{cos(PI / l), sin(PI / l)}.conj();
+        for (int i = 0; i &lt; n; i += l * 2) {
+            img w = {1, 0};
+            for (int j = 0; j &lt; l; j++) {
+                img x = f[i + j], y = w * f[i + j + l];
+                f[i + j] = x + y, f[i + j + l] = x - y;
+                w = w * w0;
+            }
+        }
+    }
+    for (int i = 0; i &lt; n; i++)
+        f[i] = f[i] / n;
+}
+</code></pre>
+<p>以上，便是 Twisted FFT。</p>
+<h3>另一种理解</h3>
+<p>注意到</p>
+<p><span class="math math-display">
+f(x_0) = f \bmod (x - x_0)
+</span></p>
+<p>我们可以从这方面着手，从取模角度重新审视上述算法。假设 <span class="math math-inline">f</span> 可以被分解为</p>
+<p><span class="math math-display">
+f = (x^n - r)(x^n + r)f_{0} + (x^n - r)f_{1} + (x^n + r)f_{2} + f_3
+</span></p>
+<p>令</p>
+<p><span class="math math-display">
+\begin{aligned}
+O_1 &amp;= f \bmod (x^n + r) = -2r f_1 + f_3\\
+O_2 &amp;= f \bmod (x^n - r) = 2r f_2 + f_3
+\end{aligned}
+</span></p>
+<p>故</p>
+<p><span class="math math-display">
+f \bmod (x^{2n} - r^2) = \frac{O_2-O_1}{2r}x^n + \frac{O_2 + O_1}{2} = I_1 x^n + I_2
+</span></p>
+<p>注意到代码中我们并没有直接求 <span class="math math-inline">O_1</span>，而是对第 <span class="math math-inline">j</span> 位乘上了 <span class="math math-inline">\zeta_{2n}^j</span>，即求的是 <span class="math math-inline">f(\zeta_{2n}x)</span>。</p>
+<p>可以发现</p>
+<p><span class="math math-display">
+f(\zeta_{2n}x) \bmod (x^n-1) = f(\zeta_{2n}x) \bmod ((\zeta_{2n} x)^n - 1) = f(x) \bmod (x^n + 1)
+</span></p>
+<p>这个图并不好理解，下面那张 Original FFT 更容易理解，但是现在广为流传的算法是 Twisted FFT。</p>
+<p><img src="../img/fft-twisted.png" alt="" /></p>
+<p>通过图可以看出，FFT 的过程即是先把多项式从根推到叶子，即求得所有单位根处的值，做完操作后，再从叶子推回根。</p>
+<h3>Original FFT</h3>
+<p>当然，我们可以直接分治，便是 Original FFT。</p>
+<p><img src="../img/fft-original.png" alt="" /></p>
+<p>由于篇幅有限，本文不展开。</p>
+<h3>预处理单位根</h3>
+<p>每次计算都重新计算一遍单位根太浪费了，我们可以预处理它，从而在计算中调用。</p>
+<pre><code class="language-cpp">vector&lt;img&gt; ROOT;
+
+void init(int n) {
+    static int lim = (ROOT = {{1, 0}}, 1);
+    if (lim &gt;= n)
+        return;
+    ROOT.resize(n);
+    for (int l = lim; l &lt; n; l *= 2) {
+        img w = {cos(PI / l / 2), sin(PI / l / 2)};
+        ROOT[l] = w;
+        for (int i = 1; i &lt; l; ++i)
+            ROOT[i + l] = ROOT[i] * w;
+    }
+    lim = n;
+}
+</code></pre>
+<h3>其他应用</h3>
+<p>FFT 实际上是一个工具，用于快速计算卷积，这篇文章我想更聚焦于理解 FFT 的计算过程。</p>
+<p>FFT 还有很多应用，比如快速加法，带通配文本匹配等，后面等再刷些题了可能会开一篇讲一讲这个，现在我积累的还不够。</p>
+<h2>Refence</h2>
+<ol>
+<li><a href="https://oi-wiki.org/math/poly/fft/" target="_blank">OI-Wiki 快速傅里叶变换</a></li>
+<li><a href="https://loj.ac/d/3165" target="_blank">FFT 入门笔记 - hly1024</a></li>
+<li><a href="test.html">test</a></li>
+</ol>
+
+  </div>
+</article>
+</main>
+	<footer class="bg-stone-100 ">
+	<div class="px-4 py-8" >
+		<p class="flex items-center text-3 justify-center text-secondary">
+			<span>© 2024 Roger Young</span>
+			<span class="i-ph-lightning px-1"></span>
+			<span>Powered by
+				<a href="https://github.com/rogeryoungh/md-wiki-rs">MD Wiki</a>
+			</span>
+		</p>
+	</div>
+</footer>
+</body>
+
+</html>

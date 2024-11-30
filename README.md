@@ -1,5 +1,7 @@
 # MD Wiki
 
+A self use markdown static site generator.
+
 ## Refences
 
 - https://github.com/zoni/obsidian-export

@@ -1,0 +1,51 @@
+name: Build executables
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build (Release)
+        run: cargo build --release
+
+      - name: Docs Test (Release)
+        run: cargo run --release
+
+      # - name: Clippy
+      #   run: cargo clippy --all
+
+      # - name: Format
+      #   run: cargo fmt --all -- --check
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: frostflake-rs
+          path: ./target/release/md-wiki-rs
+
+      - name: Update Latest Tag
+        uses: EndBug/latest-tag@latest
+
+      - uses: "softprops/action-gh-release@v2"
+        with:
+          tag_name: "latest"
+          prerelease: true
+          name: "Development Build"
+          files: ./target/release/frostflake-rs
+
+      - name: Deploy
+        uses: peaceiris/actions-gh-pages@v3
+        if: github.ref == 'refs/heads/main'
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./examples/dist/

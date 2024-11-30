@@ -88,7 +88,10 @@ impl Site {
         let state = Arc::new(self.clone());
         let app = Router::new()
             .route("/*path", get(server_render))
-            .route("/", get(|| async { Redirect::permanent("/index.html").into_response() }))
+            .route(
+                "/",
+                get(|| async { Redirect::permanent("/index.html").into_response() }),
+            )
             .with_state(state);
 
         println!("Listening on http://{}", host);

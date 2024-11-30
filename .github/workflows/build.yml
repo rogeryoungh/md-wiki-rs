@@ -19,7 +19,7 @@ jobs:
         run: cargo build --release
 
       - name: Docs Test (Release)
-        run: cargo run --release
+        run: cargo run --release ./examples
 
       - name: Clippy
         run: cargo clippy --all

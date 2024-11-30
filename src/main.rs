@@ -28,13 +28,13 @@ fn html_post_proces(html: &str, md_path: &Path) -> String {
     );
     rewriter.write(html.as_bytes()).unwrap();
 
-    return String::from_utf8(output).unwrap();
+    String::from_utf8(output).unwrap()
 }
 
 fn split_query(input: &str) -> (&str, Option<&str>) {
     if let Some(index) = input.find(['?', '#'].as_ref()) {
         let (head, tail) = input.split_at(index);
-        (head, Some(&tail))
+        (head, Some(tail))
     } else {
         (input, None)
     }
@@ -49,23 +49,14 @@ fn resolve_links(el: &mut Element, md_path: &Path) -> Result<(), Box<dyn std::er
     }
     let url = urlencoding::decode(&url).unwrap().into_owned();
     let (path, query) = split_query(&url);
-    let path = if path.starts_with("./") {
-        &path[2..]
-    } else {
-        &path
-    };
+    let path = path.strip_prefix("./").unwrap_or(path);
     let new_path = md_path.parent().unwrap().join(path);
     if !new_path.with_extension("md").exists() {
         return Err(format!("File not found: {}", new_path.display()).into());
     }
     let mut new_path = String::new();
-    if path.ends_with(".md") {
-        new_path.push_str(&path[..path.len() - 3]);
-        new_path.push_str(".html");
-    } else {
-        new_path.push_str(path);
-        new_path.push_str(".html");
-    }
+    new_path.push_str(path.strip_suffix(".md").unwrap_or(path));
+    new_path.push_str(".html");
     if let Some(query) = query {
         new_path.push_str(query);
     }

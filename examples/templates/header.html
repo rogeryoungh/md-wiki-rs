@@ -4,7 +4,7 @@
 			<div class="pl-2 flex items-center space-x-4">
 				<img src="https://files.rogery.dev/me/icon-128.png" alt="Roger's avatar"
 					class="w-11 h-11 rounded-full border-solid border-2 border-stone-300 transition transition-duration-500 hover:transform-rotate-720" />
-				<a class="decoration-none color-base color-initial font-bold" href="{{ base_url }}/">Wiki</a>
+				<a class="decoration-none color-base color-initial font-bold" href="{{ base_url | safe }}">Wiki</a>
 			</div>
 			<div class="sm:hidden">
 				<button class="p-4 text-6 justify-center hover:bg-stone-200 inline-flex items-center ">
@@ -14,9 +14,9 @@
 			<nav class="hidden sm:block">
 				<ul>
 					<a class="p-4 font-medium inline-block hover:bg-stone-200 decoration-none color-initial"
-						href="{{ base_url }}/">Home</a>
+						href="{{ base_url | safe }}">Home</a>
 					<a class="p-4 font-medium inline-block hover:bg-stone-200 decoration-none color-initial"
-						href="{{ base_url }}/test">Test</a>
+						href="{{ base_url | safe }}test.html">Test</a>
 				</ul>
 			</nav>
 		</div>

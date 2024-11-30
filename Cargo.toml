@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+lol_html = "2.0"
 minijinja =  { version = "2.5", features = ["loader"] }
 pulldown-cmark = "0.12"
-url-parse = "1.0.10"
-walkdir = "2.5"
+urlencoding = "2.1"

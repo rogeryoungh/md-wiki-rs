@@ -111,7 +111,6 @@ async fn server_render(Path(url): Path<String>, State(site): State<Arc<Site>>) -
         url.trim_start_matches('/')
     };
     let path = PathBuf::from(&url);
-    println!("Serving render file: {}", path.display());
     let mut path = if path.starts_with("_static/") {
         site.config.statics.join(path.strip_prefix("_static/").unwrap())
     } else {

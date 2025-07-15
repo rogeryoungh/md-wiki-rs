@@ -54,7 +54,7 @@ pub fn resolve_links(el: &mut Element, md_path: &Path) -> Result<(), Box<dyn std
     if !new_path.with_extension("md").exists() {
         return Err(format!("File not found: {}", new_path.display()).into());
     }
-    let mut new_path = String::new();
+    let mut new_path = String::from("./");
     new_path.push_str(path.strip_suffix(".md").unwrap_or(path));
     new_path.push_str(".html");
     if let Some(query) = query {

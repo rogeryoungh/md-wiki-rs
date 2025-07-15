@@ -5,6 +5,7 @@ use axum::response::{IntoResponse, Redirect, Response};
 use axum::routing::get;
 use axum::Router;
 use clap::{arg, Command};
+use include_dir::{include_dir, Dir};
 use markdown::{html_post_proces, render_md};
 use minijinja::{context, path_loader};
 use serde::{Deserialize, Serialize};
@@ -12,6 +13,8 @@ use std::fs::{self};
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::net::TcpListener;
+
+static PROJECT_DIR: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/examples/");
 
 #[derive(Deserialize, Serialize, Clone)]
 pub struct VaultConfig {
@@ -89,14 +92,13 @@ impl Site {
         let state = Arc::new(self.clone());
         let app = Router::new()
             .route("/{*path}", get(server_render))
-            .route("/_static/{*path}", get(server_static))
             .route(
                 "/",
                 get(|| async { Redirect::permanent("/index.html").into_response() }),
             )
             .with_state(state);
 
-        println!("Listening on http://{}", host);
+        println!("Listening on http://{}{}", host, self.config.base_url);
         let listener = TcpListener::bind(host).await.unwrap();
         axum::serve(listener, app).await.unwrap();
     }
@@ -109,7 +111,12 @@ async fn server_render(Path(url): Path<String>, State(site): State<Arc<Site>>) -
         url.trim_start_matches('/')
     };
     let path = PathBuf::from(&url);
-    let mut path = site.config.source.join(path);
+    println!("Serving render file: {}", path.display());
+    let mut path = if path.starts_with("_static/") {
+        site.config.statics.join(path.strip_prefix("_static/").unwrap())
+    } else {
+        site.config.source.join(&path)
+    };
     if path.is_dir() {
         path = path.join("index.html");
     }
@@ -130,26 +137,6 @@ async fn server_render(Path(url): Path<String>, State(site): State<Arc<Site>>) -
         let html_output = site.render_md(&contents, &path);
         return Response::new(html_output.into());
     }
-    Response::new("Not found".into())
-}
-
-async fn server_static(Path(url): Path<String>, State(site): State<Arc<Site>>) -> Response {
-    let url = {
-        let base_url = site.config.base_url.trim_start_matches('/');
-        let url = url.strip_prefix(base_url).unwrap_or(&url);
-        url.trim_start_matches('/')
-    };
-    let path = PathBuf::from(&url);
-    let mut path = site.config.statics.join(path);
-    if path.is_dir() {
-        path = path.join("index.html");
-    }
-
-    if path.exists() {
-        let contents = fs::read_to_string(path).expect("Unable to read file");
-        return Response::new(contents.into());
-    }
-
     Response::new("Not found".into())
 }
 
@@ -177,6 +164,18 @@ fn cli() -> Command {
                 .about("Serve the markdown files")
                 .arg(arg!(<path> "The directory of the markdown files"))
                 .arg(arg!(-H --"host" ["host"] "The host to listen on"))
+                .arg_required_else_help(true),
+        )
+        .subcommand(
+            Command::new("init")
+                .about("Initialize a new vault")
+                .arg(arg!(<path> "The directory to initialize the vault in"))
+                .arg_required_else_help(true),
+        )
+        .subcommand(
+            Command::new("update-templates")
+                .about("Update the templates")
+                .arg(arg!(<path> "The directory to update the templates in"))
                 .arg_required_else_help(true),
         )
 }
@@ -211,6 +210,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
             let site = Site::new(None);
             site.serve(&host).await;
+        }
+        Some(("init", sub_matches)) => {
+            let path = sub_matches
+                .get_one::<String>("path")
+                .expect("required")
+                .to_string();
+            PROJECT_DIR.extract(&path).unwrap();
+        }
+        Some(("update-templates", sub_matches)) => {
+            let path = sub_matches
+                .get_one::<String>("path")
+                .expect("required")
+                .to_string();
+            let templates_path = PathBuf::from(&path).join("templates");
+            if templates_path.exists() {
+                fs::remove_dir_all(&templates_path).unwrap();
+            }
+            PROJECT_DIR.get_dir("templates").unwrap().extract(path).unwrap();
         }
         _ => {
             eprintln!("Please provide a subcommand");

@@ -17,7 +17,9 @@ pub fn html_post_proces(html: &str, md_path: &Path) -> String {
     let mut rewriter = HtmlRewriter::new(
         Settings {
             element_content_handlers: vec![element!("a[href]", |el| {
-                resolve_links(el, md_path).unwrap();
+                if let Err(e) = resolve_links(el, md_path) {
+                    println!("warn: {:?}", e);
+                };
                 Ok(())
             })],
             ..Settings::new()

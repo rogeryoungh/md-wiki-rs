@@ -3,5 +3,15 @@
 	"dist": "./dist",
 	"templates": "./templates",
 	"statics": "./templates/_static",
-	"base_url": "/md-wiki-rs"
+	"base_url": "/md-wiki-rs",
+	"nav": [
+		{
+			"title": "Home",
+			"href": "/"
+		},
+		{
+			"title": "Test",
+			"href": "/test.html"
+		}
+	]
 }

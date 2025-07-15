@@ -13,10 +13,10 @@
 			</div>
 			<nav class="hidden sm:block">
 				<ul>
+					{%- for item in nav %}
 					<a class="p-4 font-medium inline-block hover:bg-stone-200 decoration-none color-initial"
-						href="{{ base_url | safe }}/">Home</a>
-					<a class="p-4 font-medium inline-block hover:bg-stone-200 decoration-none color-initial"
-						href="{{ base_url | safe }}/test.html">Test</a>
+						href="{{ item.href | safe }}">{{ item.title | safe }}</a>
+					{%- endfor %}
 				</ul>
 			</nav>
 		</div>

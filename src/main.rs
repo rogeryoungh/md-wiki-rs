@@ -16,6 +16,12 @@ use tokio::net::TcpListener;
 
 static PROJECT_DIR: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/examples/");
 
+#[derive(Deserialize, Serialize, Debug, Clone)]
+struct NavItem {
+    title: String,
+    href: String,
+}
+
 #[derive(Deserialize, Serialize, Clone)]
 pub struct VaultConfig {
     pub source: PathBuf,
@@ -23,6 +29,7 @@ pub struct VaultConfig {
     pub templates: PathBuf,
     pub statics: PathBuf,
     pub base_url: String,
+    pub(crate) nav: Vec<NavItem>,
 }
 
 #[derive(Clone)]
@@ -57,6 +64,7 @@ impl Site {
                 base_url => self.config.base_url,
                 title => path.file_stem().unwrap().to_str().unwrap(),
                 note_html => html_output,
+                nav => self.config.nav,
             })
             .unwrap();
 

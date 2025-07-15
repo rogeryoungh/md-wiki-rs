@@ -80,7 +80,7 @@ impl Site {
 
             fs::write(output_path, html_output).expect("Unable to write the file");
         } else {
-            create_dir_if_not_exists(&output_path);
+            create_dir_if_not_exists(output_path);
             fs::copy(path, output_path).expect("Unable to copy file");
         }
     }
@@ -112,7 +112,9 @@ async fn server_render(Path(url): Path<String>, State(site): State<Arc<Site>>) -
     };
     let path = PathBuf::from(&url);
     let mut path = if path.starts_with("_static/") {
-        site.config.statics.join(path.strip_prefix("_static/").unwrap())
+        site.config
+            .statics
+            .join(path.strip_prefix("_static/").unwrap())
     } else {
         site.config.source.join(&path)
     };
@@ -122,7 +124,7 @@ async fn server_render(Path(url): Path<String>, State(site): State<Arc<Site>>) -
 
     if path.extension().unwrap_or_default() == "md" {
         let suf = url.strip_suffix(".md").unwrap();
-        let redirect_url = format!("{}.html", suf);
+        let redirect_url = format!("{suf}.html");
         return Redirect::permanent(&redirect_url).into_response();
     }
     if path.exists() {
@@ -226,7 +228,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             if templates_path.exists() {
                 fs::remove_dir_all(&templates_path).unwrap();
             }
-            PROJECT_DIR.get_dir("templates").unwrap().extract(path).unwrap();
+            PROJECT_DIR
+                .get_dir("templates")
+                .unwrap()
+                .extract(path)
+                .unwrap();
         }
         _ => {
             eprintln!("Please provide a subcommand");

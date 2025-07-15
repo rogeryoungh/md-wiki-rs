@@ -18,7 +18,7 @@ pub fn html_post_proces(html: &str, md_path: &Path) -> String {
         Settings {
             element_content_handlers: vec![element!("a[href]", |el| {
                 if let Err(e) = resolve_links(el, md_path) {
-                    println!("warn: {:?}", e);
+                    println!("warn: {e:?}");
                 };
                 Ok(())
             })],

@@ -18,6 +18,7 @@ pub struct VaultConfig {
     pub source: PathBuf,
     pub dist: PathBuf,
     pub templates: PathBuf,
+    pub statics: PathBuf,
     pub base_url: String,
 }
 
@@ -32,7 +33,10 @@ impl Site {
         let config_file = fs::File::open("vault.json").expect("Unable to open the file");
         let mut config: VaultConfig = serde_json::from_reader(config_file).unwrap();
         if let Some(base_url) = base_url {
-            config.base_url = base_url.to_string();
+            config.base_url = base_url.clone();
+        }
+        if config.base_url.ends_with("/") {
+            config.base_url.pop();
         }
 
         let mut templates = minijinja::Environment::new();
@@ -56,38 +60,36 @@ impl Site {
         html_output
     }
 
-    fn dfs(&self, path: &std::path::Path) {
+    fn dfs(&self, path: &std::path::Path, output_path: &std::path::Path) {
         if path.is_dir() {
             let paths = fs::read_dir(path).expect("Directory not exists");
-            for path in paths {
-                let path = path.unwrap().path();
-                self.dfs(&path);
+            for path2 in paths {
+                let path2 = path2.unwrap().path();
+                let output_path2 = output_path.join(path2.file_name().unwrap());
+                self.dfs(&path2, &output_path2);
             }
         } else if path.extension().unwrap_or_default() == "md" {
             println!("{}", path.display());
             let contents = fs::read_to_string(path).expect("Unable to read file");
-
             let html_output = self.render_md(&contents, path);
-
-            let relative_path = path.strip_prefix(&self.config.source).unwrap();
-            let output_path = self.config.dist.join(relative_path).with_extension("html");
+            let output_path = output_path.with_extension("html");
             create_dir_if_not_exists(&output_path);
 
             fs::write(output_path, html_output).expect("Unable to write the file");
         } else {
-            let relative_path = path.strip_prefix(&self.config.source).unwrap();
-            let output_path = self.config.dist.join(relative_path);
             create_dir_if_not_exists(&output_path);
             fs::copy(path, output_path).expect("Unable to copy file");
         }
     }
     fn build(&self) {
-        self.dfs(&self.config.source);
+        self.dfs(&self.config.source, &self.config.dist);
+        self.dfs(&self.config.statics, &self.config.dist.join("_static"));
     }
     async fn serve(&self, host: &str) {
         let state = Arc::new(self.clone());
         let app = Router::new()
-            .route("/*path", get(server_render))
+            .route("/{*path}", get(server_render))
+            .route("/_static/{*path}", get(server_static))
             .route(
                 "/",
                 get(|| async { Redirect::permanent("/index.html").into_response() }),
@@ -128,6 +130,26 @@ async fn server_render(Path(url): Path<String>, State(site): State<Arc<Site>>) -
         let html_output = site.render_md(&contents, &path);
         return Response::new(html_output.into());
     }
+    Response::new("Not found".into())
+}
+
+async fn server_static(Path(url): Path<String>, State(site): State<Arc<Site>>) -> Response {
+    let url = {
+        let base_url = site.config.base_url.trim_start_matches('/');
+        let url = url.strip_prefix(base_url).unwrap_or(&url);
+        url.trim_start_matches('/')
+    };
+    let path = PathBuf::from(&url);
+    let mut path = site.config.statics.join(path);
+    if path.is_dir() {
+        path = path.join("index.html");
+    }
+
+    if path.exists() {
+        let contents = fs::read_to_string(path).expect("Unable to read file");
+        return Response::new(contents.into());
+    }
+
     Response::new("Not found".into())
 }
 
